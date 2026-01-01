@@ -1,5 +1,6 @@
 const foldersDiv = document.getElementById("folders");
 const saveBtn = document.getElementById("save");
+const clearEmptyBtn = document.getElementById("clearEmpty");
 
 saveBtn.onclick = async () => {
   const [tab] = await chrome.tabs.query({
@@ -33,12 +34,60 @@ saveBtn.onclick = async () => {
         return;
       }
 
+      // Validate that we have actual content
+      const hasPrompt = data.prompt && data.prompt !== "N/A" && data.prompt.trim().length > 0;
+      const hasResponse = data.response && data.response !== "N/A" && data.response.trim().length > 0;
+      
+      if (!hasPrompt && !hasResponse) {
+        alert("No content captured!\n\nTips:\n- Make sure you have a conversation on the page\n- For unsupported sites, select the AI response text before saving\n- Check the console (F12) for detailed logs");
+        return;
+      }
+
       chrome.runtime.sendMessage({
         type: "SAVE_CHAT",
         data: { ...data, folder }
+      }, () => {
+        // Show success and refresh
+        alert("Chat saved successfully!");
+        renderFolders();
       });
     }
   );
+};
+
+// Clear empty chats button
+clearEmptyBtn.onclick = () => {
+  if (!confirm("This will remove all chats with no content. Continue?")) {
+    return;
+  }
+
+  chrome.storage.local.get(["folders"], (res) => {
+    const folders = res.folders || {};
+    let removedCount = 0;
+
+    Object.keys(folders).forEach(folderName => {
+      const originalCount = folders[folderName].length;
+      
+      // Filter out empty chats
+      folders[folderName] = folders[folderName].filter(chat => {
+        const hasPrompt = chat.prompt && chat.prompt !== "N/A" && chat.prompt.trim().length > 0;
+        const hasResponse = chat.response && chat.response !== "N/A" && chat.response.trim().length > 0;
+        return hasPrompt || hasResponse;
+      });
+
+      removedCount += originalCount - folders[folderName].length;
+
+      // Remove empty folders
+      if (folders[folderName].length === 0) {
+        delete folders[folderName];
+      }
+    });
+
+    chrome.storage.local.set({ folders }, () => {
+      alert(`Removed ${removedCount} empty chat(s)`);
+      renderFolders();
+    });
+  });
 };
 
 function renderFolders() {
@@ -46,32 +95,84 @@ function renderFolders() {
     foldersDiv.innerHTML = "";
     const folders = res.folders || {};
 
+    // Check if there are any folders
+    if (Object.keys(folders).length === 0) {
+      foldersDiv.innerHTML = `
+        <div style="text-align: center; padding: 40px 20px; color: #999;">
+          <p style="font-size: 48px; margin: 0;">No Chats</p>
+          <p style="font-size: 16px; margin: 10px 0;">No chats saved yet</p>
+          <p style="font-size: 12px; color: #bbb;">Visit ChatGPT, Gemini, or Claude and save your first conversation!</p>
+        </div>
+      `;
+      return;
+    }
+
     Object.keys(folders).forEach(folderName => {
+      // First, count valid chats in this folder
+      const validChats = folders[folderName].filter(chat => {
+        const hasPrompt = chat.prompt && chat.prompt !== "N/A" && chat.prompt.trim().length > 0;
+        const hasResponse = chat.response && chat.response !== "N/A" && chat.response.trim().length > 0;
+        return hasPrompt || hasResponse;
+      });
+
+      // Skip empty folders
+      if (validChats.length === 0) {
+        console.log("Skipping empty folder:", folderName);
+        return;
+      }
+
       const folderDiv = document.createElement("div");
+      folderDiv.className = "folder-container";
 
       folderDiv.innerHTML = `
-        <h4>
-          ${folderName}
+        <div class="folder-header">
+          <h4>${folderName} <span class="chat-count">(${validChats.length})</span></h4>
           <button class="delete-folder">Delete</button>
-        </h4>
+        </div>
       `;
 
       folderDiv
         .querySelector(".delete-folder")
         .onclick = () => {
-          delete folders[folderName];
-          chrome.storage.local.set({ folders }, renderFolders);
+          if (confirm(`Delete folder "${folderName}" and all its chats?`)) {
+            delete folders[folderName];
+            chrome.storage.local.set({ folders }, renderFolders);
+          }
         };
 
-      folders[folderName].forEach(chat => {
+      validChats.forEach(chat => {
         const chatDiv = document.createElement("div");
-        chatDiv.style.marginLeft = "12px";
+        chatDiv.className = "chat-item";
+
+        // Show response if prompt is N/A, or show both
+        const hasPrompt = chat.prompt && chat.prompt !== "N/A" && chat.prompt.trim().length > 0;
+        const hasResponse = chat.response && chat.response !== "N/A" && chat.response.trim().length > 0;
+        
+        const displayPrompt = hasPrompt ? chat.prompt : null;
+        const displayResponse = hasResponse ? chat.response : null;
+        
+        const displayText = displayPrompt || displayResponse || "No content captured";
+        const truncated = displayText.slice(0, 80);
+        
+        const dateStr = chat.timestamp 
+          ? new Date(chat.timestamp).toLocaleString('en-US', { 
+              month: 'short', 
+              day: 'numeric', 
+              hour: '2-digit', 
+              minute: '2-digit' 
+            })
+          : "";
 
         chatDiv.innerHTML = `
-          <p>${chat.prompt.slice(0, 50)}...</p>
-          <small>${chat.platform}</small><br/>
-          <button class="open">Open</button>
-          <button class="delete">Delete</button>
+          <div class="chat-content">
+            <p class="chat-text"><strong>${truncated}${displayText.length > 80 ? "..." : ""}</strong></p>
+            ${displayPrompt && displayResponse ? `<small class="chat-preview">${displayResponse.slice(0, 60)}...</small>` : ""}
+            <small class="chat-meta">${chat.platform} ${dateStr ? "| " + dateStr : ""}</small>
+          </div>
+          <div class="chat-actions">
+            <button class="open">Open</button>
+            <button class="delete">Delete</button>
+          </div>
         `;
 
         chatDiv.querySelector(".open").onclick = () => {

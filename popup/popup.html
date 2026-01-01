@@ -1,13 +1,17 @@
 <!DOCTYPE html>
 <html>
 <head>
+  <meta charset="UTF-8">
   <link rel="stylesheet" href="popup.css" />
 </head>
 <body>
   <h3>AI Chat Organizer</h3>
 
-  <input id="folder" placeholder="Folder name" />
-  <button id="save">Save Current Chat</button>
+  <div class="input-section">
+    <input id="folder" placeholder="Folder name (optional)" />
+    <button id="save">Save Current Chat</button>
+    <button id="clearEmpty" style="background: #f44336; margin-top: 8px; font-size: 12px;">Clear Empty Chats</button>
+  </div>
 
   <div id="folders"></div>
 
