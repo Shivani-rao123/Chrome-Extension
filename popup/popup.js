@@ -170,10 +170,15 @@ function renderFolders() {
             <small class="chat-meta">${chat.platform} ${dateStr ? "| " + dateStr : ""}</small>
           </div>
           <div class="chat-actions">
+            <button class="view-details">View Details</button>
             <button class="open">Open</button>
             <button class="delete">Delete</button>
           </div>
         `;
+
+        chatDiv.querySelector(".view-details").onclick = () => {
+          showChatDetails(chat);
+        };
 
         chatDiv.querySelector(".open").onclick = () => {
           chrome.tabs.create({ url: chat.url });
@@ -191,6 +196,80 @@ function renderFolders() {
       foldersDiv.appendChild(folderDiv);
     });
   });
+}
+
+// Show chat details in modal
+function showChatDetails(chat) {
+  // Remove existing modal if any
+  const existingModal = document.getElementById('chatModal');
+  if (existingModal) {
+    existingModal.remove();
+  }
+
+  // Create modal
+  const modal = document.createElement('div');
+  modal.id = 'chatModal';
+  modal.className = 'modal';
+  
+  const promptText = chat.prompt && chat.prompt !== "N/A" ? chat.prompt : "(No prompt captured)";
+  const responseText = chat.response && chat.response !== "N/A" ? chat.response : "(No response captured)";
+  const dateStr = chat.timestamp 
+    ? new Date(chat.timestamp).toLocaleString('en-US', { 
+        month: 'long', 
+        day: 'numeric', 
+        year: 'numeric',
+        hour: '2-digit', 
+        minute: '2-digit'
+      })
+    : "Unknown date";
+
+  modal.innerHTML = `
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Chat Details</h3>
+        <button class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="detail-section">
+          <div class="detail-label">USER PROMPT:</div>
+          <div class="detail-text">${promptText}</div>
+        </div>
+        <div class="detail-section">
+          <div class="detail-label">AI RESPONSE:</div>
+          <div class="detail-text">${responseText}</div>
+        </div>
+        <div class="detail-section">
+          <div class="detail-label">METADATA:</div>
+          <div class="detail-meta">
+            <p><strong>Platform:</strong> ${chat.platform}</p>
+            <p><strong>Date:</strong> ${dateStr}</p>
+            <p><strong>URL:</strong> <a href="${chat.url}" target="_blank">${chat.url}</a></p>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="modal-btn-open">Open in Browser</button>
+        <button class="modal-btn-close">Close</button>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+
+  // Add event listeners
+  modal.querySelector('.modal-close').onclick = () => modal.remove();
+  modal.querySelector('.modal-btn-close').onclick = () => modal.remove();
+  modal.querySelector('.modal-btn-open').onclick = () => {
+    chrome.tabs.create({ url: chat.url });
+    modal.remove();
+  };
+  
+  // Close on background click
+  modal.onclick = (e) => {
+    if (e.target === modal) {
+      modal.remove();
+    }
+  };
 }
 
 renderFolders();

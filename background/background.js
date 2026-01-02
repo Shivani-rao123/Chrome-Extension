@@ -1,4 +1,4 @@
-chrome.runtime.onMessage.addListener((msg) => {
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg.type === "SAVE_CHAT") {
     chrome.storage.local.get(["folders"], (res) => {
       const folders = res.folders || {};
@@ -17,7 +17,12 @@ chrome.runtime.onMessage.addListener((msg) => {
         timestamp: Date.now()
       });
 
-      chrome.storage.local.set({ folders });
+      chrome.storage.local.set({ folders }, () => {
+        console.log("✅ Chat saved to folder:", folderName);
+        sendResponse({ success: true });
+      });
     });
+    
+    return true; // Keep message channel open for async response
   }
 });
