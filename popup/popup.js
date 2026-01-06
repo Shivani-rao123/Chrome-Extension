@@ -75,10 +75,13 @@ function renderFolders() {
     // Check if there are any folders
     if (Object.keys(folders).length === 0) {
       foldersDiv.innerHTML = `
-        <div style="text-align: center; padding: 40px 20px; color: #999;">
-          <p style="font-size: 48px; margin: 0;">No Chats</p>
-          <p style="font-size: 16px; margin: 10px 0;">No chats saved yet</p>
-          <p style="font-size: 12px; color: #bbb;">Visit ChatGPT, Gemini, or Claude and save your first conversation!</p>
+        <div class="empty-state">
+          <svg class="empty-state-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M21 15C21 15.5304 20.7893 16.0391 20.4142 16.4142C20.0391 16.7893 19.5304 17 19 17H7L3 21V5C3 4.46957 3.21071 3.96086 3.58579 3.58579C3.96086 3.21071 4.46957 3 5 3H19C19.5304 3 20.0391 3.21071 20.4142 3.58579C20.7893 3.96086 21 4.46957 21 5V15Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <p class="empty-state-title">No chats yet</p>
+          <p class="empty-state-text">Get started by saving your first conversation</p>
+          <p class="empty-state-hint">Works with ChatGPT, Gemini, and Claude</p>
         </div>
       `;
       return;
@@ -98,18 +101,20 @@ function renderFolders() {
         return;
       }
 
-      const folderDiv = document.createElement("div");
-      folderDiv.className = "folder-container";
+      const folderSection = document.createElement("div");
+      folderSection.className = "folder-section";
 
-      folderDiv.innerHTML = `
+      folderSection.innerHTML = `
         <div class="folder-header">
-          <h4>${folderName} <span class="chat-count">(${validChats.length})</span></h4>
-          <button class="delete-folder">Delete</button>
+          <h4 class="folder-title">${folderName} <span class="folder-count">${validChats.length}</span></h4>
+          <div class="folder-actions">
+            <button class="btn-delete-folder">Delete</button>
+          </div>
         </div>
       `;
 
-      folderDiv
-        .querySelector(".delete-folder")
+      folderSection
+        .querySelector(".btn-delete-folder")
         .onclick = () => {
           if (confirm(`Delete folder "${folderName}" and all its chats?`)) {
             delete folders[folderName];
@@ -118,8 +123,8 @@ function renderFolders() {
         };
 
       validChats.forEach(chat => {
-        const chatDiv = document.createElement("div");
-        chatDiv.className = "chat-item";
+        const chatCard = document.createElement("div");
+        chatCard.className = "chat-card";
 
         // Show response if prompt is N/A, or show both
         const hasPrompt = chat.prompt && chat.prompt !== "N/A" && chat.prompt.trim().length > 0;
@@ -140,37 +145,45 @@ function renderFolders() {
             })
           : "";
 
-        chatDiv.innerHTML = `
-          <div class="chat-content">
-            <p class="chat-text"><strong>${truncated}${displayText.length > 80 ? "..." : ""}</strong></p>
-            ${displayPrompt && displayResponse ? `<small class="chat-preview">${displayResponse.slice(0, 60)}...</small>` : ""}
-            <small class="chat-meta">${chat.platform} ${dateStr ? "| " + dateStr : ""}</small>
+        chatCard.innerHTML = `
+          <div class="chat-header">
+            <p class="chat-title">${truncated}${displayText.length > 80 ? "..." : ""}</p>
+            ${displayPrompt && displayResponse ? `<p class="chat-preview">${displayResponse.slice(0, 100)}${displayResponse.length > 100 ? "..." : ""}</p>` : ""}
+          </div>
+          <div class="chat-meta">
+            <span class="chat-platform">${chat.platform}</span>
+            ${dateStr ? `<span class="chat-date">${dateStr}</span>` : ""}
           </div>
           <div class="chat-actions">
-            <button class="view-details">View Details</button>
-            <button class="open">Open</button>
-            <button class="delete">Delete</button>
+            <button class="chat-btn chat-btn-primary view-details">View</button>
+            <button class="chat-btn open">Open</button>
+            <button class="chat-btn chat-btn-danger delete">Delete</button>
           </div>
         `;
 
-        chatDiv.querySelector(".view-details").onclick = () => {
+        chatCard.querySelector(".view-details").onclick = (e) => {
+          e.stopPropagation();
           showChatDetails(chat);
         };
 
-        chatDiv.querySelector(".open").onclick = () => {
+        chatCard.querySelector(".open").onclick = (e) => {
+          e.stopPropagation();
           chrome.tabs.create({ url: chat.url });
         };
 
-        chatDiv.querySelector(".delete").onclick = () => {
-          folders[folderName] =
-            folders[folderName].filter(c => c.id !== chat.id);
-          chrome.storage.local.set({ folders }, renderFolders);
+        chatCard.querySelector(".delete").onclick = (e) => {
+          e.stopPropagation();
+          if (confirm("Delete this chat?")) {
+            folders[folderName] =
+              folders[folderName].filter(c => c.id !== chat.id);
+            chrome.storage.local.set({ folders }, renderFolders);
+          }
         };
 
-        folderDiv.appendChild(chatDiv);
+        folderSection.appendChild(chatCard);
       });
 
-      foldersDiv.appendChild(folderDiv);
+      foldersDiv.appendChild(folderSection);
     });
   });
 }
