@@ -10,10 +10,10 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
       folders[folderName].push({
         id: Date.now(),
-        prompt: msg.data.prompt || "N/A",
-        response: msg.data.response || "N/A",
-        url: msg.data.url || "",
-        platform: msg.data.platform || "Unknown",
+        prompt: msg.data.prompt,
+        response: msg.data.response,
+        url: msg.data.url,
+        platform: msg.data.platform,
         timestamp: Date.now()
       });
 
@@ -22,7 +22,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         sendResponse({ success: true });
       });
     });
-
-    return true; // REQUIRED
+    
+    return true; // Keep message channel open for async response
   }
 });

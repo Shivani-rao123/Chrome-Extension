@@ -14,7 +14,7 @@ saveBtn.onclick = async () => {
   }
 
   const folder =
-    document.getElementById("folder").value.trim() || "Unsorted";
+    document.getElementById("folder").value || "Unsorted";
 
   chrome.tabs.sendMessage(
     tab.id,
@@ -55,39 +55,16 @@ saveBtn.onclick = async () => {
   );
 };
 
-
+// Clear empty chats button
 clearEmptyBtn.onclick = () => {
   if (!confirm("This will remove all chats with no content. Continue?")) {
     return;
   }
-
-  chrome.storage.local.get(["folders"], (res) => {
-    const folders = res.folders || {};
-    let removedCount = 0;
-
-    Object.keys(folders).forEach(folderName => {
-      const originalCount = folders[folderName].length;
-      
-      // Filter out empty chats
-      folders[folderName] = folders[folderName].filter(chat => {
-        const hasPrompt = chat.prompt && chat.prompt !== "N/A" && chat.prompt.trim().length > 0;
-        const hasResponse = chat.response && chat.response !== "N/A" && chat.response.trim().length > 0;
-        return hasPrompt || hasResponse;
-      });
-
-      removedCount += originalCount - folders[folderName].length;
-
-      // Remove empty folders
-      if (folders[folderName].length === 0) {
-        delete folders[folderName];
-      }
-    });
-
-    chrome.storage.local.set({ folders }, () => {
-      alert(`Removed ${removedCount} empty chat(s)`);
+  chrome.storage.local.set({ folders: {} }, () => {
+      alert("All chats cleared!");
       renderFolders();
-    });
   });
+
 };
 
 function renderFolders() {
