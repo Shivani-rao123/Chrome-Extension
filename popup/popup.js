@@ -55,7 +55,7 @@ saveBtn.onclick = async () => {
   );
 };
 
-// Clear empty chats button
+
 clearEmptyBtn.onclick = () => {
   if (!confirm("This will remove all chats with no content. Continue?")) {
     return;
