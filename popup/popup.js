@@ -14,7 +14,7 @@ saveBtn.onclick = async () => {
   }
 
   const folder =
-    document.getElementById("folder").value || "Unsorted";
+    document.getElementById("folder").value.trim() || "Unsorted";
 
   chrome.tabs.sendMessage(
     tab.id,
