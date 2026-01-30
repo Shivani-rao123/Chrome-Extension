@@ -3,7 +3,7 @@
   "name": "AI Chat Organizer",
   "version": "1.0",
   "description": "Save and resume conversations across AI chat platforms",
-  "permissions": ["storage", "tabs", "activeTab"],
+  "permissions": ["storage", "tabs", "activeTab","contextMenus"],
   "host_permissions": ["<all_urls>"],
   "background": {
     "service_worker": "background/background.js"

@@ -315,7 +315,10 @@ function saveSpecificChatGPTMessage(index) {
     '[data-message-author-role="user"]'
   );
 
-  const response = assistantMessages[index]?.innerText?.replace("💾 Save", "").trim();
+  const response = assistantMessages[index]?.innerText
+  ?.replace("💾 Save", "")
+  .trim();
+
   const prompt = userMessages[index]?.innerText?.trim() || "Prompt not found";
 
   if (!response) {
@@ -338,3 +341,46 @@ function saveSpecificChatGPTMessage(index) {
   });
 }
 
+function cleanAIText(text) {
+  // Remove emojis & pictographs
+  text = text.replace(
+    /[\p{Emoji_Presentation}\p{Extended_Pictographic}]/gu,
+    ''
+  );
+
+  // Remove common decorative symbols
+  text = text.replace(/[•–—✓✔★☆→←]/g, '');
+
+  // Normalize spaces
+  text = text.replace(/\s+/g, ' ').trim();
+
+  return text;
+}
+chrome.runtime.onMessage.addListener((msg) => {
+  if (msg.type === "COPY_CLEAN_SELECTION") {
+    console.log("📩 COPY_CLEAN_SELECTION received");
+
+    const selection = window.getSelection();
+    const selectedText = selection ? selection.toString() : "";
+
+    console.log("✂ Selected text:", selectedText);
+
+    if (!selectedText) {
+      alert("❌ No text selected");
+      return;
+    }
+
+    const cleanText = cleanAIText(selectedText);
+    console.log("🧹 Clean text:", cleanText);
+
+    navigator.clipboard.writeText(cleanText)
+      .then(() => {
+        console.log("✅ Copied to clipboard");
+        alert("📋 Copied without decor!");
+      })
+      .catch(err => {
+        console.error("❌ Clipboard error:", err);
+        alert("Clipboard copy failed");
+      });
+  }
+});
