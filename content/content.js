@@ -124,6 +124,7 @@ function getChatContainer() {
 ========================= */
 function onResponseComplete() {
   console.log("📦 Extracting message pair...");
+  injectSaveButtonsChatGPT();
 
   const extractedData = extractMessagePair();
 
@@ -262,3 +263,78 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     sendResponse(extractMessagePair());
   }
 });
+/* =========================
+   INJECT SAVE BUTTONS (CHATGPT)
+========================= */
+
+function injectSaveButtonsChatGPT() {
+  const assistantMessages = document.querySelectorAll(
+    '[data-message-author-role="assistant"]'
+  );
+
+  assistantMessages.forEach((assistantEl, index) => {
+    // Prevent duplicate buttons
+    if (assistantEl.querySelector(".ai-chat-organizer-save")) return;
+
+    const saveBtn = document.createElement("button");
+    saveBtn.innerText = "💾 Save";
+    saveBtn.className = "ai-chat-organizer-save";
+
+    // Minimal inline styling (safe for content scripts)
+    saveBtn.style.cssText = `
+      margin-top: 6px;
+      padding: 4px 8px;
+      font-size: 12px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      background: #f9f9f9;
+      cursor: pointer;
+      opacity: 0.6;
+    `;
+
+    saveBtn.onmouseenter = () => (saveBtn.style.opacity = "1");
+    saveBtn.onmouseleave = () => (saveBtn.style.opacity = "0.6");
+
+    saveBtn.onclick = (e) => {
+      e.stopPropagation();
+      saveSpecificChatGPTMessage(index);
+    };
+
+    assistantEl.appendChild(saveBtn);
+  });
+}
+/* =========================
+   SAVE SPECIFIC CHATGPT MESSAGE
+========================= */
+
+function saveSpecificChatGPTMessage(index) {
+  const assistantMessages = document.querySelectorAll(
+    '[data-message-author-role="assistant"]'
+  );
+  const userMessages = document.querySelectorAll(
+    '[data-message-author-role="user"]'
+  );
+
+  const response = assistantMessages[index]?.innerText?.replace("💾 Save", "").trim();
+  const prompt = userMessages[index]?.innerText?.trim() || "Prompt not found";
+
+  if (!response) {
+    alert("Could not capture response");
+    return;
+  }
+
+  chrome.runtime.sendMessage({
+    type: "SAVE_CHAT",
+    data: {
+      id: crypto.randomUUID(),
+      prompt,
+      response,
+      platform: "ChatGPT",
+      url: window.location.href,
+      timestamp: Date.now()
+    }
+  }, () => {
+    alert("✅ Specific chat saved!");
+  });
+}
+
